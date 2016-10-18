@@ -28,7 +28,7 @@ to create a vertex shown as a cube, and
 to create an edge displayed as a line between the two vertice's cubes. Of course, the vertices and edges can also be removed using the commands
 
     veldhuizen_engine.graph.remove_vertex(vertex);
-    velduizen_engine.graph.remove_edge(edge);
+    veldhuizen_engine.graph.remove_edge(edge);
     
 But if you don't want to keep track of vertices and edges in your own code, you can access them through the properties
 
