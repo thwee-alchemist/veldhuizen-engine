@@ -11,10 +11,6 @@ The following commands are used to set up the graph animation:
       window: window,
       resize: true
     });
-
-    $('#zoom').change(function(){
-      veldhuizen_engine.variables.zoom = $(this).val();
-    });
     
 This sets up a veldhuizen-engine in a div taking up the entire width and height of the screen. Other elements can be placed on top of this div, here #veldhuizen-engine.
 
