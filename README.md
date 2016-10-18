@@ -1,6 +1,6 @@
 # veldhuizen-engine
 
-The veldhuizen-engine is a dynamic, force directed graph layout implemenation for the browser written in javascript. 
+The veldhuizen-engine is a dynamic, force directed graph layout implemenation for the browser written in javascript. This implementation requires three.js, which you can find at https://threejs.org/.
 
 The following commands are used to set up the graph animation:
 
@@ -45,5 +45,6 @@ You might want to play with the options, which you can find under
 
     veldhuizen_engine.variables
     
+For more information, see: https://arxiv.org/abs/0712.1549
+
 Enjoy!
-    
