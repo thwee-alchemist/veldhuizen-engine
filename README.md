@@ -45,6 +45,8 @@ You might want to play with the options, which you can find under
 
     veldhuizen_engine.variables
     
+The options are not well done, yet. Some of them can only be set before init is called, I think the zoom variable is the only one that currently works dynamically, you might have to play with things to get that working. 
+    
 For more information, see: https://arxiv.org/abs/0712.1549
 
 Enjoy!
