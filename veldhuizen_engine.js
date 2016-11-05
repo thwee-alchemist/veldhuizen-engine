@@ -9,6 +9,7 @@
   
   Requirements:
   three.js, by MrDoob, see https://threejs.org/
+  release 66
   
   Usage: 
   veldhiuzen_engine = new VeldhuizenEngine();
@@ -56,30 +57,17 @@ var VeldhuizenEngine = function(){
   var CONSTANTS = {
     width: 1000,
     attraction: 0.0025,
-    far: 1000,
-    optimal_distance: 1.0,
-    minimum_velocity: 0.001,
-    friction: 0.60,
-    zoom: -500,
-
-    gravity: 0.070,
-
-    rangeMiIn: -1.0,
-    rangeMaxIn: 1.0,
-    rangeMinOut: -10,
-    rangeMaxOut: 10,
+    far: 100000,
+    optimal_distance: 100.0,
+    minimum_velocity: 0.0002,
+    friction: 0.00750,
+    zoom: 4000,
 
     BHN3: {
-      inner_distance: 0.036,
-      repulsion: 100.0,
-      epsilon: 0.1
+      inner_distance: 100.0,
+      repulsion: 50.0,
+      epsilon: 0.00001
     }
-  };
-  
-  var is_vertex = function(potential){
-    return potential.hasOwnProperty('id') && 
-      potential.hasOwnProperty('edge_count') && 
-      potential.hasOwnProperty('edges');
   };
 
   /* 
@@ -99,16 +87,18 @@ var VeldhuizenEngine = function(){
     this.options = options;
     this.id = Vertex.getID();
     
-    this.position = new THREE.Vector3(0, 0, 0);
-    this.velocity = new THREE.Vector3(0, 0, 0);
-    this.acceleration = new THREE.Vector3(0, 0, 0);
+    this.position = new THREE.Vector3(0.0, 0.0, 0.0);
+    this.velocity = new THREE.Vector3(0.0, 0.0, 0.0);
+    this.acceleration = new THREE.Vector3(0.0, 0.0, 0.0);
+    this.repulsion_forces = new THREE.Vector3(0.0, 0.0, 0.0);
+    this.attraction_forces = new THREE.Vector3(0.0, 0.0, 0.0);
+
     
     this.toString = function(){
       return this.id.toString();
     };
 
-    this.edge_count = 0;
-    this.edges = {};
+    this.edges = [];
     this.neighbors = [];
   };
   Vertex.ID = 0;
@@ -116,33 +106,10 @@ var VeldhuizenEngine = function(){
     return ++Vertex.ID;
   };
 
-  var label_position = function(vertex_position, size){
-    var location = {
-      x: vertex_position.x - Math.round(size / 2),
-      y: vertex_position.y + size + Math.round(size/5),
-      z: vertex_position.z
-    };
-
-    return location; 
-  };
-
   Vertex.prototype.paint = function(scene){
     this.object = new Cube(scene, this.options);
-    
-    if(this.options && this.options.label){
-      this.label_sprite = make_text_sprite(this.options.label.text, this.options.label);
-      this.label_sprite.parent = this.object;
-      this.label_sprite.position.y -= 10;
-      //this.label_sprite.position = label_position(this.object.position, 5);
-    }
     scene.add(this.object);
   };
-
-  /*
-  Vertex.prototype.update = function(){
-    this.label_sprite.position = label_position(this.object.position, 5);
-  };
-  */
   
   /* 
     Vertex.remove(...) 
@@ -150,7 +117,18 @@ var VeldhuizenEngine = function(){
     or the vertex's cube: Vertex.remove('cube').
   */ 
   Vertex.prototype.remove = function(){
-    this.graph.remove_vertex(this);
+    // for(var i=0; i<this.edges.length; i++){
+      // this.edges[i].remove();
+    // }
+    
+    for(var i in this.edges){
+      this.edges[i].remove();
+    }
+    
+    this.graph.scene.remove(this.object);
+    this.object.geometry.dispose();
+    remove(this.graph.V, this);
+    // console.log('Vertex removed     #' + this.id + ' V:' + this.graph.V.length + ' E:' + this.graph.E.length);
   }
 
   // Edge
@@ -161,18 +139,6 @@ var VeldhuizenEngine = function(){
       throw new Error('Edge without sufficent arguments');
     }
 
-    if(!is_vertex(source)){
-      var source_type = typeof source;
-      var source_error_msg = 'Source should be a Vertex instead of a ' + src_type + '.';
-      throw new Error(src_error_msg);
-    }
-
-    if(!is_vertex(target)){
-      var target_type = typeof target;
-      var target_error_msg = 'Target should be a Vertex instead of a ' + tgt_type + '.';
-      throw new Error(tgt_error_msg);
-    }
-
     this.id = id;
     if(this.options.hasOwnProperty('directed')){
       this.gravity = true;
@@ -181,67 +147,75 @@ var VeldhuizenEngine = function(){
     this.source = source;
     this.target = target;
 
-    this.source.edge_count += 1;
-    this.target.edge_count += 1;
-
-    this.source.edges[this.id] = this;
-    this.target.edges[this.id] = this;
+    this.source.edges.push(this);
+    this.target.edges.push(this);
 
     this.order = Math.random();
   };
 
-  Edge.prototype.paint = function(scene){
-    this.object = line(scene, this.source, this.target, this.options);
+  Edge.prototype.paint = function(){
+    this.object = Line(scene, this.source, this.target, this.options);
+  };
+  
+  Edge.prototype.refresh = function(){
+    this.scene.remove(this.object);
+    this.object.geometry.dispose();
+    delete this.object;
+    this.object = Line(scene, this.source, this.target, this.options);
+  };
+  
+  Edge.prototype.update = function(){
+    this.object.geometry.vertices[0].copy(this.source.object.position);
+    this.object.geometry.vertices[1].copy(this.target.object.position);
+    this.object.geometry.verticesNeedUpdate = true;
   };
 
   Edge.prototype.toString = function(){
     return this.source.toString() + '-->' + this.target.toString(); 
   };
-
-  Edge.prototype._destroy = function(scene){
-    delete this.source.edges[this.id];
-    delete this.target.edges[this.id];
-
-    CONSTANTS.scene.remove(this.object);
-    delete this.object;
-    
-    this.source.edge_count--;
-    this.target.edge_count--;
+  
+  var remove = function(arr, item){
+    arr.splice(arr.indexOf(item), 1);
   };
   
   Edge.prototype.remove = function(){
-    this.graph.remove_vertex(this);
+    remove(this.source.edges, this);
+    remove(this.target.edges, this);
+    remove(this.graph.E, this);
+    
+    this.graph.scene.remove(this.object);
+    this.object.geometry.dispose();
+    delete this.object;
+    
+    // console.log('  Edge removed (' + this.source.id + ', ' + this.target.id + ') V:' + this.graph.V.length + ' E:' + this.graph.E.length);
   };
 
   // Graph
   var Graph = function(scene){
     this.scene = scene;
     this.type = 'Graph';
+    
     this.vertex_id_spawn = 0;
-    this.V = {};
+    this.V = [];
 
     this.edge_id_spawn = 0;
-    this.E = {};
-
-    this.edge_counts = {};
+    this.E = [];
   };
 
   // api
   Graph.prototype.clear = function(){
 
-    for(var e in this.E){
-      this.E[e]._destroy(that.scene);
-    }
-
-    for(var v in this.V){
-      // this.scene.remove...
-      scene.remove(this.V[v].object);
-      // this.V[v]._destroy();
+    for(var i=0; i<this.E.length; i++){
+      this.E[i]._destroy(this.scene);
     }
     
-    this.V = {};
-    this.E = {};
-    this.edge_counts = {};
+    for(var i=0; i<this.V.length; i++){
+      scene.remove(this.V[i].object);
+    }
+    
+    // probably unneccessary
+    this.V = []; 
+    this.E = [];
     this.edge_id_spawn = 0;
     this.vertex_id_spawn = 0;
   };
@@ -254,10 +228,11 @@ var VeldhuizenEngine = function(){
   Graph.prototype.add_vertex = function(options){
     var vertex = new Vertex(this.vertex_id_spawn++, options);
     vertex.paint(this.scene);
-    this.V[vertex.id] = vertex;
+    this.V.push(vertex);
     
     vertex.graph = this;
 
+    // console.log('Vertex   added     #' + vertex.id + ' V:' + this.V.length + ' E:' + this.E.length);
     return vertex;
   };
 
@@ -273,52 +248,32 @@ var VeldhuizenEngine = function(){
     var key = '_' + source.id + '_' + target.id;
     var edge;
     
-    if(!this.edge_counts.hasOwnProperty(key)){
-      edge = new Edge(this.edge_id_spawn++, source, target, options);
-      this.E[edge.id] = edge;
-      this.edge_counts[key] = 1;
-    }else{
-      this.edge_counts[key]++;
-      for(var e in target.edges){
-        for(var r in source.edges){
-          if(e === r){
-            return source.edges[r];
-          }
-        }
-      }
-    }
-    
-    edge.paint(this.scene);
+    edge = new Edge(this.edge_id_spawn++, source, target, options);
+    edge.scene = this.scene;
     edge.graph = this;
+    
+    this.E.push(edge);
+    edge.paint();
+    
+    // console.log('  Edge   added (' + edge.source.id + ', ' + edge.target.id + ') V:' + this.V.length + ' E:' + this.E.length);
     
     return edge;
   };
 
-  // api
-  Graph.prototype.remove_edge = function(edge){
-    var key = this._make_key(edge.source, edge.target);
-    if(--this.edge_counts[key] === 0){
-      edge._destroy();
-      delete this.E[edge.id];
-    }
-  };
-
   Graph.prototype.toString = function(){
-    var edges = Object.keys(this.E).length;
-    var nodes = Object.keys(this.V).length;
-
+    var edges = this.E.length;
+    var nodes = this.V.length;
+    
     return '|V|: ' + nodes.toString() + ',  |E|: ' + edges.toString();
   };
 
   // api
-  Graph.prototype.remove_vertex = function(vertex){
-    for(var e in vertex.edges){
-      vertex.edges[e]._destroy(this.scene);  
-      delete this.E[e];
-    }
-    
-    this.scene.remove(vertex.object);
-    delete this.V[vertex.id];
+  Graph.prototype.remove_vertex = function(vertex){    
+    vertex.remove();
+  };
+  
+  Graph.prototype.remove_edge = function(edge){
+    edge.remove();
   };
 
   var is_graph = function(potential){
@@ -361,7 +316,7 @@ var VeldhuizenEngine = function(){
       options.height,
       options.depth
     );
-    geometry.dynamic = true;
+    // geometry.dynamic = true;
     
     var cube;
     var geometry = new THREE.BoxGeometry(
@@ -380,97 +335,18 @@ var VeldhuizenEngine = function(){
     }
     
     cube = new THREE.Mesh(geometry, material);
-    cube.position.copy(new THREE.Vector3(
+    cube.position.set(
       Math.random() * scale, 
       Math.random() * scale,
       Math.random() * scale
-    ));
-    cube.matrixAutoUpdate = true;
+    );
+    //cube.matrixAutoUpdate = true;
     scene.add(cube);
 
     return cube;
   };
-  
-  /*
-    todo: a streamlined system for extracting options. 
-    
-    specifically:
-      vertex_options.label and edge_options.label should be
-      the same, and the label option should not conflict with 
-      vertex- or edge- options.
-      
-    This system could be called an option extractor. I see a 
-    stream of options being passed through the vertex and edge
-    constructors and painters that takes the appropriate parts 
-    of the options and applies them to the correct part in the 
-    taxonomy of objects, i.e. vertex or label, or edge or label.
-  */
-  
-  /*
-    THREE.Sprite Label(parameters)
-  
-    label
-    creates a label that can be added to a vertex or an edge.
-    
-    parameters
-    - text
-    - font_family      // optional: 'Arial'
-    - font_size        // optional: 12
-    - sprite_alignment // optional: top left
-    
-    returns
-    a sprite
-  */
-  var Label = function( parameters ){
-    if( parameters === undefined ){
-      parameters = {};
-    }
-    
-    if(!parameters.text === undefined){
-      throw "Can't do a label without some text";
-    }
-    
-    var font_family = parameters.hasOwnProperty('font_family') ? 
-      parameters['font_family'] : 'Arial';
-    var font_size = parameters.hasOwnProperty('font_size') ? 
-      parameters['font_size'] : 12;
-    // border thickness
-    // border color
-    // background color
-    
-    var canvas = document.createElement('canvas');
-    var context = canvas.getContext('2d');
-    context.font = "Bold " + font_size + "px " + font_family;
-    
-    // get size data (height depends only on font size)
-    var metrics = context.measureText(parameters.text);
-    var text_width = metrics.width;
-    //context.fillStyle = "rgba(0,0,0,0)";
-    //context.strokeStyle = "rgba(0,0,0,0)";
-    
-    //context.lineWidth = 0;
-    context.fillStyle = "rgba(0, 0, 0, 1.0)";
-    context.fillText(parameters.text ? parameters.text : '', 1, font_size);
-    
-    var texture = new THREE.Texture(canvas);
-    texture.needsUpdate = true;
-    
-    var sprite_material = new THREE.SpriteMaterial(
-      {
-        map: texture, 
-        useScreenCoordinates: false
-      }
-    );
-    
-    var sprite = new THREE.Sprite( sprite_material );
-    // sprite.scale.set(100, 50, 1.0);
 
-    return sprite;
-  };
-
-  // apiish this will change
-  // todo: make line options like cube options
-  var line = function(scene, source, target){
+  var Line = function(scene, source, target){
     var geometry = new THREE.Geometry();
     geometry.dynamic = true;
     geometry.vertices.push(source.object.position);
@@ -478,7 +354,6 @@ var VeldhuizenEngine = function(){
     geometry.verticesNeedUpdate = true;
     
     var material = new THREE.LineBasicMaterial({ color: 0x000000 });
-    
     var line = new THREE.Line( geometry, material );
       
     scene.add(line);
@@ -589,22 +464,17 @@ var VeldhuizenEngine = function(){
   
   var edges = false;
   Graph.prototype.layout = function(){
-
+    
     // calculate repulsions
     var tree = new BHN3();
-    var vertex, edge, v, e;
     
-    for(v in this.V){
-      vertex = this.V[v];
-      vertex.acceleration = new THREE.Vector3(0.0, 0.0, 0.0);
-      vertex.repulsion_forces = new THREE.Vector3(0.0, 0.0, 0.0);
-      vertex.attraction_forces = new THREE.Vector3(0.0, 0.0, 0.0);
-
+    for(var i=0; i<this.V.length; i++){
+      var vertex = this.V[i];
       tree.insert(vertex);
     }
     
-    for(v in this.V){
-      vertex = this.V[v];
+    for(var i=0; i<this.V.length; i++){
+      var vertex = this.V[i];
       vertex.repulsion_forces = vertex.repulsion_forces || new THREE.Vector3();
       vertex.repulsion_forces.set(0.0, 0.0, 0.0);
       tree.estimate(
@@ -615,28 +485,31 @@ var VeldhuizenEngine = function(){
     
     // calculate attractions
     
-    for(e in this.E){
-      edge = this.E[e];
+    for(var i=0; i<this.E.length; i++){
+      var edge = this.E[i];
       
       var attraction = edge.source.object.position.clone().sub(
         edge.target.object.position
       );
       attraction.multiplyScalar(-1 * CONSTANTS.attraction);
+      
+      /*
+      if(!edge.source.hasOwnProperty('attraction_forces')){
+        edge.source.attraction_forces = new THREE.Vector3(0.0, 0.0, 0.0);
+      }
+      if(!edge.target.hasOwnProperty('attraction_forces')){
+        edge.target.attraction_forces = new THREE.Vector3(0.0, 0.0, 0.0);
+      }
+      */
 
       // attraction.multiplyScalar(edge.options.strength);
-
       edge.source.attraction_forces.sub(attraction);
       edge.target.attraction_forces.add(attraction);
-
-      if(edge.gravity){
-        var gravity = new THREE.Vector3(0.0, -1 * CONSTANTS.gravity, 0.0);
-        edge.target.acceleration.add(gravity);
-      }
     }
     
-    for(v in this.V){
+    for(var i=0; i<this.V.length; i++){
       // update velocity
-      vertex = this.V[v];
+      var vertex = this.V[i];
       if(vertex){
         var friction = vertex.velocity.multiplyScalar(CONSTANTS.friction);
 
@@ -649,18 +522,26 @@ var VeldhuizenEngine = function(){
         
         vertex.velocity.add(vertex.acceleration);
         vertex.object.position.add(vertex.velocity);
+        
+        for(var j in vertex.edges){
+          vertex.edges[j].object.geometry.verticesNeedUpdate = true;
+        }
       }
     }
     
-    for(e in this.E){
-      edge = this.E[e];
-
-      if(edge){  
-        edge.object.geometry.dirty = true;
-        edge.object.geometry.__dirty = true;
-        edge.object.geometry.verticesNeedUpdate = true;
-      }
+    /*
+    for(var i=0; i<this.E.length; i++){
+      var edge = this.E[i];
+      edge.update();
+      // edge.refresh();
+      
+      // edge.object.geometry.vertices[0].copy(edge.source.object.position);
+      // edge.object.geometry.vertices[1].copy(edge.target.object.position);
+      // edge.object.geometry.dirty = true;
+      // edge.object.geometry.__dirty = true;
+      // edge.object.geometry.verticesNeedUpdate = true;
     }
+    */
 
     this.center = tree.center();
   };
@@ -674,11 +555,16 @@ var VeldhuizenEngine = function(){
       graph;
 
   var render = function render(){
+    for(var i=0; i<that.render_functions.length; i++){
+      that.render_functions[i]();
+    }
+    
     requestAnimationFrame(render);
+    
     graph.layout();
     renderer.render(scene, camera);
-    camera.position.z = graph.center.z - CONSTANTS.zoom;
-    camera.lookAt(graph.center);
+    // camera.position.z = graph.center.z - CONSTANTS.zoom;
+    // camera.lookAt(graph.center);
   };
 
   var clear = function clear(){
@@ -706,7 +592,7 @@ var VeldhuizenEngine = function(){
     scene.add( camera );
     scene.add( light );
     
-    renderer = new THREE.WebGLRenderer();
+    renderer = new THREE.WebGLRenderer(); // WebGLRenderer
     renderer.setClearColor(0xefefef);
     renderer.setSize( options.width, options.height );
     
@@ -721,7 +607,7 @@ var VeldhuizenEngine = function(){
     
     graph = new Graph(scene);
     
-    camera.position.z = -250;
+    camera.position.z = -CONSTANTS.zoom; // move to render() for real time update
     camera.lookAt(new THREE.Vector3(0, 0, 0));
 
     that._internals = {
@@ -743,8 +629,10 @@ var VeldhuizenEngine = function(){
     this.render = render;
     this.clear = clear;
     this.variables = CONSTANTS;
+    this.render_functions = [];
+    this.renderer = renderer;
+    this.camera = camera;
     
-
     render();
   };
   

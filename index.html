@@ -1,0 +1,63 @@
+<!doctype html>
+<html>
+  <head>
+    <title>veldhuizen-engine</title>
+    <!--<script type="text/javascript" src="r66.three.min.js"></script>-->
+    <script type="text/javascript" src="r82.three.min.js"></script>
+    <script type="text/javascript" src="OrbitControls.js"></script>
+    <script type="text/javascript" src="veldhuizen_engine.js"></script>
+    <link rel="stylesheet" type="text/css" href="index.css">
+  </head>
+  <body>
+    <div id="veldhuizen-engine"></div>
+    
+    <script type="text/javascript">
+    
+      veldhuizen_engine = new VeldhuizenEngine();
+      veldhuizen_engine.init('#veldhuizen-engine', {
+        width: window.width,
+        height: window.height,
+        window: window,
+        resize: true,
+        manual_layout: true
+      });
+      
+      controls = new THREE.OrbitControls( veldhuizen_engine.camera, veldhuizen_engine.renderer.domElement );
+      
+      var GRAPH_SIZE = 100;
+      var VERTICES = 100;
+      var vertices = [];
+      
+      while(vertices.length < 100){
+        var vertex = veldhuizen_engine.graph.add_vertex({
+          size: 100,
+          color: 0x800000
+        });
+        
+        vertices.push(vertex);
+      }
+      
+      veldhuizen_engine.render_functions.push(function(){
+        // remove vertex
+        to_delete = vertices[Math.round(Math.random() * VERTICES)];
+        veldhuizen_engine.graph.remove_vertex(to_delete);
+
+        // add vertex
+        var vertex = veldhuizen_engine.graph.add_vertex({
+          size: 100,
+          color: 0x800000
+        });
+        vertices.push(vertex);
+      
+        // add edge
+        var v1 = vertices[Math.round(Math.random() * VERTICES)];
+        var v2 = vertices[Math.round(Math.random() * VERTICES)];
+        
+        veldhuizen_engine.graph.add_edge(v1, v2);
+        
+        controls.update();
+      }); 
+      
+    </script>
+  </body>
+</html>
