@@ -28,6 +28,15 @@
       var VERTICES = 100;
       var vertices = [];
       
+      /*
+      var geometry = new THREE.Geometry();
+      geometry.vertices.push(new THREE.Vector3(-1000, -1000, -1000));
+      geometry.vertices.push(new THREE.Vector3(1000, 1000, 1000));
+      var material = new THREE.LineBasicMaterial({ color: 0x000000 });
+      var line = new THREE.Line( geometry, material );
+      */
+      
+      /*
       while(vertices.length < 100){
         var vertex = veldhuizen_engine.graph.add_vertex({
           size: 100,
@@ -56,7 +65,21 @@
         veldhuizen_engine.graph.add_edge(v1, v2);
         
         controls.update();
-      }); 
+      });
+      */
+      
+      var graph = veldhuizen_engine.graph;
+      var v1 = graph.add_vertex({color: 0x800000, size: 1});
+      var v2 = graph.add_vertex({color: 0x800000, size: 1});
+      
+      var choice = function(arr){ 
+        return arr[Math.round(Math.random() * arr.length)]; 
+      };   
+      // var e1 = graph.add_edge(v1, v2);
+      
+      veldhuizen_engine.render_functions.push(function(){
+        controls.update();
+      });
       
     </script>
   </body>

@@ -56,17 +56,19 @@ var VeldhuizenEngine = function(){
   var that = this;
   var CONSTANTS = {
     width: 1000,
-    attraction: 0.0025,
+    attraction: 0.001,
     far: 100000,
-    optimal_distance: 100.0,
-    minimum_velocity: 0.0002,
-    friction: 0.00750,
-    zoom: 4000,
+    
+    optimal_distance: 10.0,
+    minimum_velocity: 0.1,
+    friction: .350,
+    
+    zoom: 100,
 
     BHN3: {
-      inner_distance: 100.0,
-      repulsion: 50.0,
-      epsilon: 0.00001
+      inner_distance: 0.2,
+      repulsion: 1,
+      epsilon: 0.0001
     }
   };
 
@@ -128,7 +130,6 @@ var VeldhuizenEngine = function(){
     this.graph.scene.remove(this.object);
     this.object.geometry.dispose();
     remove(this.graph.V, this);
-    // console.log('Vertex removed     #' + this.id + ' V:' + this.graph.V.length + ' E:' + this.graph.E.length);
   }
 
   // Edge
@@ -186,8 +187,6 @@ var VeldhuizenEngine = function(){
     this.graph.scene.remove(this.object);
     this.object.geometry.dispose();
     delete this.object;
-    
-    // console.log('  Edge removed (' + this.source.id + ', ' + this.target.id + ') V:' + this.graph.V.length + ' E:' + this.graph.E.length);
   };
 
   // Graph
@@ -204,18 +203,15 @@ var VeldhuizenEngine = function(){
 
   // api
   Graph.prototype.clear = function(){
-
-    for(var i=0; i<this.E.length; i++){
-      this.E[i]._destroy(this.scene);
+    for(var i in this.E){
+      this.E[i].remove();
     }
     
-    for(var i=0; i<this.V.length; i++){
-      scene.remove(this.V[i].object);
+    for(var i=this.V.length-1; i>=0; i--){
+      this.V[i].remove();
     }
     
     // probably unneccessary
-    this.V = []; 
-    this.E = [];
     this.edge_id_spawn = 0;
     this.vertex_id_spawn = 0;
   };
@@ -232,7 +228,6 @@ var VeldhuizenEngine = function(){
     
     vertex.graph = this;
 
-    // console.log('Vertex   added     #' + vertex.id + ' V:' + this.V.length + ' E:' + this.E.length);
     return vertex;
   };
 
@@ -254,9 +249,7 @@ var VeldhuizenEngine = function(){
     
     this.E.push(edge);
     edge.paint();
-    
-    // console.log('  Edge   added (' + edge.source.id + ', ' + edge.target.id + ') V:' + this.V.length + ' E:' + this.E.length);
-    
+        
     return edge;
   };
 
@@ -492,15 +485,6 @@ var VeldhuizenEngine = function(){
         edge.target.object.position
       );
       attraction.multiplyScalar(-1 * CONSTANTS.attraction);
-      
-      /*
-      if(!edge.source.hasOwnProperty('attraction_forces')){
-        edge.source.attraction_forces = new THREE.Vector3(0.0, 0.0, 0.0);
-      }
-      if(!edge.target.hasOwnProperty('attraction_forces')){
-        edge.target.attraction_forces = new THREE.Vector3(0.0, 0.0, 0.0);
-      }
-      */
 
       // attraction.multiplyScalar(edge.options.strength);
       edge.source.attraction_forces.sub(attraction);
@@ -508,6 +492,7 @@ var VeldhuizenEngine = function(){
     }
     
     for(var i=0; i<this.V.length; i++){
+      
       // update velocity
       var vertex = this.V[i];
       if(vertex){
@@ -518,12 +503,13 @@ var VeldhuizenEngine = function(){
             vertex.attraction_forces.clone().negate()
           )
         );
-        vertex.acceleration.sub(friction);
+        vertex.acceleration.sub(friction); // should this be velocity instead of acceleration?
         
         vertex.velocity.add(vertex.acceleration);
         vertex.object.position.add(vertex.velocity);
         
         for(var j in vertex.edges){
+          vertex.edges[j].update();
           vertex.edges[j].object.geometry.verticesNeedUpdate = true;
         }
       }
@@ -632,6 +618,7 @@ var VeldhuizenEngine = function(){
     this.render_functions = [];
     this.renderer = renderer;
     this.camera = camera;
+    this.scene = scene;
     
     render();
   };
