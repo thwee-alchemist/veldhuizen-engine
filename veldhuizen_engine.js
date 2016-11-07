@@ -56,19 +56,14 @@ var VeldhuizenEngine = function(){
   var that = this;
   var CONSTANTS = {
     width: 1000,
-    attraction: 0.001,
     far: 100000,
-    
-    optimal_distance: 10.0,
-    minimum_velocity: 0.1,
-    friction: .350,
-    
     zoom: 100,
-
     BHN3: {
       inner_distance: 0.2,
-      repulsion: 1,
-      epsilon: 0.0001
+      epsilon: 0.1,
+      repulsion: .1,
+      attraction: .000001,
+      friction: 0.05,
     }
   };
 
@@ -484,7 +479,7 @@ var VeldhuizenEngine = function(){
       var attraction = edge.source.object.position.clone().sub(
         edge.target.object.position
       );
-      attraction.multiplyScalar(-1 * CONSTANTS.attraction);
+      attraction.multiplyScalar(-1 * CONSTANTS.BHN3.attraction);
 
       // attraction.multiplyScalar(edge.options.strength);
       edge.source.attraction_forces.sub(attraction);
@@ -496,13 +491,19 @@ var VeldhuizenEngine = function(){
       // update velocity
       var vertex = this.V[i];
       if(vertex){
-        var friction = vertex.velocity.multiplyScalar(CONSTANTS.friction);
+        var friction = vertex.velocity.multiplyScalar(CONSTANTS.BHN3.friction);
 
         vertex.acceleration.add(
-          vertex.repulsion_forces.clone().add(
-            vertex.attraction_forces.clone().negate()
+          vertex.repulsion_forces.clone().sub(
+            vertex.attraction_forces
           )
         );
+        
+        /*
+        console.log(vertex.id, vertex.repulsion_forces);
+        console.log(vertex.id, vertex.attraction_forces);
+        */
+        
         vertex.acceleration.sub(friction); // should this be velocity instead of acceleration?
         
         vertex.velocity.add(vertex.acceleration);
