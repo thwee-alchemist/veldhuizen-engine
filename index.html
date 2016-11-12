@@ -71,15 +71,70 @@
       var graph = veldhuizen_engine.graph;
       var v1 = graph.add_vertex({color: 0x800000, size: 1});
       var v2 = graph.add_vertex({color: 0x800000, size: 1});
+      graph.add_edge(v1, v2);
       
       var choice = function(arr){ 
         return arr[Math.round(Math.random() * arr.length)]; 
       };   
       // var e1 = graph.add_edge(v1, v2);
       
+      var distanceTravelled = new THREE.Vector3(0,0,0);
+      var position = new THREE.Vector3(0, 0, 0);
+      
+      var assign_repulsion = function(v){
+        CONSTANTS.BHN3.repulsion = v;
+      };
+      
+      var get_repulsion = function(){
+        return CONSTANTS.BHN3.repulsion;
+      };
+      
+      var assign_attraction = function(v){
+        CONSTANTS.BHN3.attraction = v;
+      };
+      
+      var get_attraction = function(){
+        return CONSTANTS.BHN3.attraction;
+      };
+              
+      var vary = function(name, assign, get, min_order, max_order){
+        var i = min_order;
+        assign(i);
+        console.log(name, get());
+        var up = true;
+        
+        var interval = setInterval(function(){
+          
+          if(up){
+            i = i*10;
+          }else{
+            i = i/10;
+          }
+          
+          if(up && get() > max_order){
+            up = false;
+          }else if(!up && get() <= min_order){
+            clearInterval(interval);
+          }
+          assign(i);
+          console.log(name, get());
+        }, 100);
+      };
+      
+      
       veldhuizen_engine.render_functions.push(function(){
+        distanceTravelled.add(v1.object.position.clone().sub(position));
+        position = v1.object.position.clone();
+        
+        // console.log(distanceTravelled.length());
+        
         controls.update();
       });
+      
+      for(var i=0; i<100; i++){ graph.add_vertex({color: 0x800000, size: 1}) };
+      while(graph.E.length < 100){ try{ graph.add_edge(choice(graph.V), choice(graph.V)); }catch(e){ 1+1 } };
+      
+      // for(var i=0; i<300; i++){ graph.add_edge(choice(graph.V), choice(graph.V)); };
       
     </script>
   </body>

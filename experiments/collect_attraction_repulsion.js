@@ -11,3 +11,11 @@ graph.add_edge(v1, v2);
 setInterval(function(){
   take([v1, v2]);
 }, 10);
+
+var vary = function(variable, min_order, max_order){
+  fo
+  r(var v=min_order; v<max_order; v *= 10){
+    variable = i;
+    take()
+  }
+}

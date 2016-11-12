@@ -51,19 +51,21 @@ var logslider = function(position){
   return Math.exp(minv + scale*(position - minp))
 };
 
+var CONSTANTS;
+
 var VeldhuizenEngine = function(){
 
   var that = this;
-  var CONSTANTS = {
+  CONSTANTS = {
     width: 1000,
     far: 100000,
     zoom: 100,
     BHN3: {
-      inner_distance: 0.2,
+      inner_distance: 0.036,
       epsilon: 0.1,
-      repulsion: .1,
-      attraction: .000001,
-      friction: 0.05,
+      repulsion: 0.75,
+      attraction: 0.000025,
+      friction: 0.60,
     }
   };
 
@@ -429,7 +431,7 @@ var VeldhuizenEngine = function(){
     // first term
     enumerator1 = repulsion_constant = CONSTANTS.BHN3.repulsion;
     
-    difference = x1.clone().sub(x2.clone());
+    difference = x1.clone().sub(x2);
     absolute_difference = difference.length();
     
     epsilon = CONSTANTS.BHN3.epsilon;
