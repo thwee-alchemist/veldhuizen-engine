@@ -71,7 +71,10 @@
       var graph = veldhuizen_engine.graph;
       var v1 = graph.add_vertex({color: 0x800000, size: 1});
       var v2 = graph.add_vertex({color: 0x800000, size: 1});
-      graph.add_edge(v1, v2);
+      var e = graph.add_edge(v1, v2);
+      
+      // 261.6 - 493.9
+      
       
       var choice = function(arr){ 
         return arr[Math.round(Math.random() * arr.length)]; 
@@ -120,15 +123,56 @@
           console.log(name, get());
         }, 100);
       };
-      
+        
+
+      var min = 1;
+      var max = 100;
+      var min_f = 261.6;
+      var max_f = 493.9;
+      var context = new AudioContext();
+      var makeNote = function(e){
+        var length = e.source.object.position.clone().sub(
+          e.target.object.position
+        ).length();
+                
+        var length_fraction = (length - min)/(max - min);
+        var frequency = (length_fraction*(max_f-min_f))+min_f;
+        frequency = Math.round(frequency*10)/10;        
+        
+        var o = context.createOscillator();
+        var g = context.createGain();
+        o.type = 'sine';
+        o.connect(g);
+        o.frequency.value = frequency;
+        g.connect(context.destination);
+        o.start(0);
+        g.gain.exponentialRampToValueAtTime(0.000001, context.currentTime+ 1);
+
+      };
       
       veldhuizen_engine.render_functions.push(function(){
         distanceTravelled.add(v1.object.position.clone().sub(position));
         position = v1.object.position.clone();
-        
+        // makeNote();
         // console.log(distanceTravelled.length());
-        
         controls.update();
+      });
+      
+      var f_interval;
+      randomInterval = function(f){
+        f_interval = setInterval(
+          function(){
+            f(); 
+            clearInterval(f_interval); 
+            randomInterval(f)
+          }, 
+          Math.random() * 1000
+        );
+      };
+      
+      
+      randomInterval(function(){
+        makeNote(e)
       });
       
       for(var i=0; i<100; i++){ graph.add_vertex({color: 0x800000, size: 1}) };
