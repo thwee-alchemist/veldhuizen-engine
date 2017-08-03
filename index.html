@@ -170,10 +170,11 @@
         );
       };
       
-      
+      /*
       randomInterval(function(){
         makeNote(e)
       });
+      */
       
       for(var i=0; i<100; i++){ graph.add_vertex({color: 0x800000, size: 1}) };
       while(graph.E.length < 100){ try{ graph.add_edge(choice(graph.V), choice(graph.V)); }catch(e){ 1+1 } };
